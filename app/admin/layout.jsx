@@ -34,7 +34,7 @@ const pageTitles = {
 };
 
 export default function AdminLayout({ children }) {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, profileLoading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const pageTitle = pageTitles[pathname] ?? 'Admin Portal';
@@ -45,6 +45,8 @@ export default function AdminLayout({ children }) {
     }
   }, [user, loading, router, pathname]);
 
+  // While checking the session, show a minimal branded splash
+  // (much faster than before — only blocks for the session check, not the profile fetch)
   if (loading) {
     return (
       <div style={{
@@ -55,26 +57,26 @@ export default function AdminLayout({ children }) {
         backgroundColor: '#071B3B',
         color: '#ffffff',
         fontFamily: 'var(--font-body)',
-        fontSize: '1.2rem',
-        fontWeight: 600,
       }}>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes shimmer {
+            0%   { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+          }
+        `}</style>
         <div style={{ textAlign: 'center' }}>
           <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid rgba(255, 255, 255, 0.1)',
-            borderTop: '4px solid #FDB813',
+            width: '36px', height: '36px',
+            border: '3px solid rgba(255,255,255,0.1)',
+            borderTop: '3px solid #FDB813',
             borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 1rem',
+            animation: 'spin 0.8s linear infinite',
+            margin: '0 auto 0.75rem',
           }} />
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
-          Loading Admin Panel...
+          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>
+            Authenticating…
+          </div>
         </div>
       </div>
     );
@@ -192,24 +194,49 @@ export default function AdminLayout({ children }) {
           borderTop: '1px solid rgba(255,255,255,0.07)',
           background: 'rgba(0,0,0,0.2)'
         }}>
+          <style>{`
+            @keyframes shimmer {
+              0%   { background-position: -400px 0; }
+              100% { background-position: 400px 0; }
+            }
+            .skeleton {
+              background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.13) 50%, rgba(255,255,255,0.06) 75%);
+              background-size: 400px 100%;
+              animation: shimmer 1.4s infinite;
+              border-radius: 4px;
+            }
+          `}</style>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
-            <div style={{
-              width: '34px', height: '34px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #FDB813, #f59e0b)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: '0.875rem', color: '#071B3B', flexShrink: 0
-            }}>
-              {initials}
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={fullName}>
-                {fullName}
+            {/* Avatar */}
+            {profileLoading ? (
+              <div className="skeleton" style={{ width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0 }} />
+            ) : (
+              <div style={{
+                width: '34px', height: '34px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #FDB813, #f59e0b)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: '0.875rem', color: '#071B3B', flexShrink: 0
+              }}>
+                {initials}
               </div>
-              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={email}>
-                {email}
+            )}
+            {/* Name + email */}
+            {profileLoading ? (
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <div className="skeleton" style={{ height: '11px', width: '80%' }} />
+                <div className="skeleton" style={{ height: '9px',  width: '60%' }} />
               </div>
-            </div>
+            ) : (
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={fullName}>
+                  {fullName}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={email}>
+                  {email}
+                </div>
+              </div>
+            )}
           </div>
           <button
             onClick={handleLogout}

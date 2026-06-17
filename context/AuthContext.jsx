@@ -9,7 +9,10 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  // authLoading: waiting for session check (blocks route protection)
   const [loading, setLoading] = useState(true);
+  // profileLoading: waiting for profile row (only affects avatar/name display)
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     // If Supabase is not configured, stop loading immediately
@@ -19,6 +22,7 @@ export function AuthProvider({ children }) {
     }
 
     const fetchUserProfile = async (userId) => {
+      setProfileLoading(true);
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -34,27 +38,41 @@ export function AuthProvider({ children }) {
       } catch (err) {
         console.error('Error in fetchUserProfile:', err);
         setProfile(null);
+      } finally {
+        setProfileLoading(false);
       }
     };
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+    // ── Parallelized init: fire getSession and (if a userId is already known
+    //   from a persisted token) the profile fetch at the same time.
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
 
-    // Listen for auth state changes
+        if (session?.user) {
+          // Don't await — profile fetch runs in background; UI unblocks immediately
+          fetchUserProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error('Error getting session:', err);
+      } finally {
+        // Session check is done — unblock route protection now
+        setLoading(false);
+      }
+    };
+
+    init();
+
+    // Listen for auth state changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user.id);
       } else {
         setProfile(null);
       }
@@ -97,6 +115,7 @@ export function AuthProvider({ children }) {
     session,
     profile,
     loading,
+    profileLoading,
     signIn,
     signUp,
     signOut,
