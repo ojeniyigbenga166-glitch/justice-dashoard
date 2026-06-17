@@ -12,7 +12,6 @@ import {
   Inbox, 
   Settings, 
   LogOut, 
-  Globe,
   Zap
 } from 'lucide-react';
 
@@ -212,39 +211,21 @@ export default function AdminLayout({ children }) {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link
-              href="/"
-              target="_blank"
-              style={{
-                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                gap: '0.3rem',
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.8)',
-                border: 'none', borderRadius: '7px',
-                padding: '0.45rem 0.5rem',
-                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                transition: 'all 0.18s ease', textDecoration: 'none'
-              }}
-            >
-              <Globe size={13} /> Live Site
-            </Link>
-            <button
-              onClick={handleLogout}
-              style={{
-                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                gap: '0.3rem',
-                backgroundColor: 'rgba(239,68,68,0.12)',
-                color: '#f87171',
-                border: 'none', borderRadius: '7px',
-                padding: '0.45rem 0.5rem',
-                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                transition: 'all 0.18s ease'
-              }}
-            >
-              <LogOut size={13} /> Logout
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              gap: '0.4rem',
+              backgroundColor: 'rgba(239,68,68,0.12)',
+              color: '#f87171',
+              border: 'none', borderRadius: '8px',
+              padding: '0.55rem 0.75rem',
+              fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+              transition: 'all 0.18s ease'
+            }}
+          >
+            <LogOut size={14} /> Logout
+          </button>
         </div>
       </aside>
 
