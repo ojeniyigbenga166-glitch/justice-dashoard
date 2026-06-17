@@ -1,6 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -33,8 +35,74 @@ const pageTitles = {
 };
 
 export default function AdminLayout({ children }) {
+  const { user, profile, loading, signOut } = useAuth();
+  const router = useRouter();
   const pathname = usePathname();
   const pageTitle = pageTitles[pathname] ?? 'Admin Portal';
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push(`/login?redirectTo=${encodeURIComponent(pathname)}`);
+    }
+  }, [user, loading, router, pathname]);
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#071B3B',
+        color: '#ffffff',
+        fontFamily: 'var(--font-body)',
+        fontSize: '1.2rem',
+        fontWeight: 600,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid rgba(255, 255, 255, 0.1)',
+            borderTop: '4px solid #FDB813',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem',
+          }} />
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          Loading Admin Panel...
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const email = profile?.email || user?.email || '';
+  const fullName = profile?.full_name || 'Admin User';
+  const initials = fullName
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'AD';
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F0F4F8', fontFamily: 'var(--font-body)' }}>
@@ -133,14 +201,14 @@ export default function AdminLayout({ children }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '0.875rem', color: '#071B3B', flexShrink: 0
             }}>
-              JG
+              {initials}
             </div>
             <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Justice Georgenes
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={fullName}>
+                {fullName}
               </div>
-              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                admin@justicesolar.com
+              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={email}>
+                {email}
               </div>
             </div>
           </div>
@@ -162,6 +230,7 @@ export default function AdminLayout({ children }) {
               <Globe size={13} /> Live Site
             </Link>
             <button
+              onClick={handleLogout}
               style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 gap: '0.3rem',
@@ -223,8 +292,8 @@ export default function AdminLayout({ children }) {
               background: 'linear-gradient(135deg, #FDB813, #f59e0b)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '0.8rem', color: '#071B3B', cursor: 'pointer'
-            }}>
-              JG
+            }} title={fullName}>
+              {initials}
             </div>
           </div>
         </header>

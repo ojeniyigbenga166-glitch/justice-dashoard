@@ -114,7 +114,9 @@ CREATE POLICY "Authenticated write orders"   ON orders    FOR ALL    USING (auth
 CREATE POLICY "Authenticated read leads"     ON leads     FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated write leads"    ON leads     FOR ALL    USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Authenticated read settings"  ON settings  FOR SELECT USING (auth.role() = 'authenticated');
+-- Public can READ settings (needed by the storefront website)
+CREATE POLICY "Public read settings"         ON settings  FOR SELECT USING (true);
+-- Only authenticated admins can write/delete
 CREATE POLICY "Authenticated write settings" ON settings  FOR ALL    USING (auth.role() = 'authenticated');
 
 -- =============================================================
@@ -135,3 +137,45 @@ INSERT INTO settings (key, value, description) VALUES
   ('currency',         '"USD"',                 'Store currency')
 ON CONFLICT (key) DO NOTHING;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS category TEXT;
+
+-- =============================================================
+-- PROFILES (Matches auth.users)
+-- =============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name   TEXT,
+  email       TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policies: Only authenticated users can read/update profiles
+CREATE POLICY "Authenticated read profiles"
+  ON public.profiles FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated update own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+-- Trigger function to automatically create a profile after signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email)
+  VALUES (
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Admin User'),
+    new.email
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger configuration
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+

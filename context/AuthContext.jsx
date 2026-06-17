@@ -8,6 +8,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,17 +18,46 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    const fetchUserProfile = async (userId) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (error) {
+          console.error('Error fetching profile:', error);
+          setProfile(null);
+        } else {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error('Error in fetchUserProfile:', err);
+        setProfile(null);
+      }
+    };
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
@@ -41,6 +71,21 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const signUp = async (email, password, fullName) => {
+    if (!supabase) throw new Error('Supabase is not configured. Please set your environment variables.');
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    if (error) throw error;
+    return data;
+  };
+
   const signOut = async () => {
     if (!supabase) throw new Error('Supabase is not configured.');
     const { error } = await supabase.auth.signOut();
@@ -50,8 +95,10 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     session,
+    profile,
     loading,
     signIn,
+    signUp,
     signOut,
     isAuthenticated: !!user,
     isConfigured: supabaseIsConfigured,
